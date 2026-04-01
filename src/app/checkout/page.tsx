@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/useCartStore";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Upload, ImageIcon, CheckCircle, Info } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -13,6 +13,56 @@ export default function CheckoutPage() {
   const { items, cartTotal, clearCart } = useCartStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [paymentProof, setPaymentProof] = useState("");
+  
+  const [platformSettings, setPlatformSettings] = useState({
+    instaPayNumber: "",
+    mobileWalletNumber: "",
+    bankAccountDetails: "",
+  });
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) {
+          setPlatformSettings({
+            instaPayNumber: data.instaPayNumber || "",
+            mobileWalletNumber: data.mobileWalletNumber || "",
+            bankAccountDetails: data.bankAccountDetails || "",
+          });
+        }
+      })
+      .finally(() => setLoadingSettings(false));
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/cloudinary/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.secure_url) {
+        setPaymentProof(data.secure_url);
+      } else {
+        alert("Upload failed. Please try again.");
+      }
+    } catch (err) {
+      alert("Error uploading file.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -22,7 +72,7 @@ export default function CheckoutPage() {
     postalCode: "",
     country: "",
     notes: "",
-    paymentMethod: "InstaPay",
+    paymentMethod: "Cash on Delivery",
   });
 
   const handleChange = (e: any) => {
@@ -31,6 +81,12 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    
+    if (["InstaPay", "Mobile Wallet", "Bank Transfer"].includes(formData.paymentMethod) && !paymentProof) {
+      alert(t("checkout.proofRequired") || "Please upload payment proof (screenshot) first.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -48,7 +104,7 @@ export default function CheckoutPage() {
 
       // 1. Process Standard Order
       if (standardItems.length > 0) {
-        const standardTotal = standardItems.reduce((acc, item) => acc + item.price * item.quantity, 0) + 50;
+        const itemsPrice = standardItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -56,8 +112,11 @@ export default function CheckoutPage() {
             orderItems: standardItems,
             shippingAddress,
             paymentMethod: formData.paymentMethod,
-            totalPrice: standardTotal,
+            itemsPrice,
+            shippingPrice: 0,
+            totalPrice: itemsPrice, // Initial total without shipping
             notes: formData.notes,
+            paymentProof,
           }),
         });
         if (!res.ok) {
@@ -78,7 +137,8 @@ export default function CheckoutPage() {
             notes: formData.notes,
             shippingAddress,
             totalPrice: item.price * item.quantity,
-            status: "Pending"
+            status: "Pending",
+            paymentProof,
           }),
         });
         if (!res.ok) {
@@ -96,8 +156,13 @@ export default function CheckoutPage() {
     }
   };
 
+  useEffect(() => {
+    if (items.length === 0 && !orderComplete) {
+      router.push("/cart");
+    }
+  }, [items.length, orderComplete, router]);
+
   if (items.length === 0 && !orderComplete) {
-    router.push("/cart");
     return null;
   }
 
@@ -160,7 +225,7 @@ export default function CheckoutPage() {
             <div className="pt-6 border-t">
               <h3 className="text-lg font-bold mb-4">{t("checkout.payment")}</h3>
               <div className="space-y-3">
-                {["InstaPay", "Mobile Wallet", "Bank Transfer", "Credit/Debit Card"].map((method) => (
+                {["InstaPay", "Mobile Wallet", "Bank Transfer", "Credit/Debit Card", "Cash on Delivery"].map((method) => (
                   <label key={method} className="flex items-center space-x-3 border p-4 rounded-lg cursor-pointer hover:bg-neutral-50 transition-colors">
                     <input 
                       type="radio" 
@@ -170,10 +235,71 @@ export default function CheckoutPage() {
                       onChange={handleChange}
                       className="w-4 h-4 text-black focus:ring-black" 
                     />
-                    <span className="font-medium text-sm">{method === "InstaPay" ? "InstaPay" : method === "Mobile Wallet" ? "Mobile Wallet" : method === "Bank Transfer" ? "Bank Transfer" : "Credit/Debit Card"}</span>
+                    <span className="font-medium text-sm">
+                      {method === "InstaPay" ? "InstaPay" : method === "Mobile Wallet" ? "Mobile Wallet" : method === "Bank Transfer" ? "Bank Transfer" : method === "Cash on Delivery" ? (t("checkout.cod") || "Cash on Delivery") : "Credit/Debit Card"}
+                    </span>
                   </label>
                 ))}
               </div>
+
+              {["InstaPay", "Mobile Wallet", "Bank Transfer"].includes(formData.paymentMethod) && (
+                <div className="mt-6 p-6 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-neutral-900 mb-1">
+                        {formData.paymentMethod === "InstaPay" ? "InstaPay Details" : 
+                         formData.paymentMethod === "Mobile Wallet" ? "Wallet Details" : "Bank Details"}
+                      </p>
+                      <p className="text-sm text-neutral-600 font-mono bg-white p-3 rounded-xl border border-neutral-100">
+                        {formData.paymentMethod === "InstaPay" ? platformSettings.instaPayNumber : 
+                         formData.paymentMethod === "Mobile Wallet" ? platformSettings.mobileWalletNumber : 
+                         platformSettings.bankAccountDetails}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-neutral-200">
+                    <p className="text-sm font-bold mb-3">{t("checkout.uploadProof") || "Upload Payment Screenshot"}</p>
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleFileUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        disabled={uploading}
+                      />
+                      <div className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all ${paymentProof ? "border-green-500 bg-green-50" : "border-neutral-200 hover:border-black bg-white"}`}>
+                        {uploading ? (
+                          <Loader2 className="w-8 h-8 animate-spin text-neutral-400" />
+                        ) : paymentProof ? (
+                          <>
+                            <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
+                            <p className="text-sm font-bold text-green-700">Screenshot Uploaded!</p>
+                            <img src={paymentProof} className="w-20 h-20 object-cover rounded mt-2 border" alt="Proof" />
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-8 h-8 text-neutral-300 mb-2" />
+                            <p className="text-sm font-medium text-neutral-500 text-center">
+                              {t("checkout.uploadHint") || "Click to upload your transfer screenshot"}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.paymentMethod === "Credit/Debit Card" && (
+                <div className="mt-6 p-6 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
+                  <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-sm font-medium text-amber-800">
+                    Online payment is currently processing manually. Please choose another method for faster processing or contact us after ordering.
+                  </p>
+                </div>
+              )}
             </div>
           </form>
         </div>
@@ -192,31 +318,31 @@ export default function CheckoutPage() {
                       <p className="text-neutral-500">{t("checkout.qty")}: {item.quantity}</p>
                     </div>
                   </div>
-                  <span className="font-medium">{(item.price * item.quantity).toFixed(2)} {t("common.currency")}</span>
+                  <span className="font-medium">{(item.price * item.quantity)} {t("common.currency")}</span>
                 </div>
               ))}
             </div>
 
             <div className="space-y-3 text-sm border-t pt-4 mb-6">
-              <div className="flex justify-between">
+              <div className="flex justify-between font-bold">
                 <span className="text-neutral-600">{t("cart.subtotal")}</span>
-                <span>{cartTotal().toFixed(2)} {t("common.currency")}</span>
+                <span>{cartTotal()} {t("common.currency")}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">{t("cart.shipping")}</span>
-                <span>50.00 {t("common.currency")}</span>
+              <div className="flex flex-col gap-1 items-end">
+                <span className="text-indigo-600 font-bold">{t("checkout.shippingTBD")}</span>
+                <span className="text-[10px] text-neutral-400">{t("checkout.shippingNote")}</span>
               </div>
             </div>
 
             <div className="flex justify-between text-xl font-extrabold border-t pt-4 mb-8">
               <span>{t("cart.total")}</span>
-              <span>{(cartTotal() + 50).toFixed(2)} {t("common.currency")}</span>
+              <span>{cartTotal()} {t("common.currency")}</span>
             </div>
 
             <button
               type="submit"
               form="checkout-form"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (["InstaPay", "Mobile Wallet", "Bank Transfer"].includes(formData.paymentMethod) && !paymentProof)}
               className="w-full bg-black text-white py-4 rounded-full font-bold flex justify-center items-center hover:bg-neutral-800 transition-colors disabled:opacity-50"
             >
               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : t("checkout.placeOrder")}

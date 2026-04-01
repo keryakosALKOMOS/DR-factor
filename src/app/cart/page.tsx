@@ -35,7 +35,7 @@ export default function CartPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg">{item.name}</h3>
-                  <p className="text-sm text-neutral-500 mt-1">{item.price.toFixed(2)} {t("common.currency")}</p>
+                  <p className="text-sm text-neutral-500 mt-1">{item.price} {t("common.currency")}</p>
                   <div className="flex items-center gap-4 mt-3">
                     <div className="flex items-center border rounded-md">
                       <button 
@@ -56,7 +56,7 @@ export default function CartPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between w-full sm:w-auto">
-                <p className="font-semibold text-lg sm:mr-8">{(item.price * item.quantity).toFixed(2)} {t("common.currency")}</p>
+                <p className="font-semibold text-lg sm:mr-8">{(item.price * item.quantity)} {t("common.currency")}</p>
                 <button 
                   onClick={() => removeItem(item.product, item.size, item.color)}
                   className="text-neutral-400 hover:text-red-500 transition-colors"
@@ -74,7 +74,7 @@ export default function CartPage() {
             <div className="space-y-4 mb-6">
               <div className="flex justify-between text-neutral-600 border-b pb-4">
                 <span>{t("cart.subtotal")}</span>
-                <span>{cartTotal().toFixed(2)} {t("common.currency")}</span>
+                <span>{cartTotal()} {t("common.currency")}</span>
               </div>
               <div className="flex justify-between text-neutral-600 border-b pb-4">
                 <span>{t("cart.shipping")}</span>
@@ -82,7 +82,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between font-bold text-lg pt-2">
                 <span>{t("cart.total")}</span>
-                <span>{cartTotal().toFixed(2)} {t("common.currency")}</span>
+                <span>{cartTotal()} {t("common.currency")}</span>
               </div>
             </div>
             <Link 

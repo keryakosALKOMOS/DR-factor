@@ -160,7 +160,7 @@ export default function CustomCheckoutPage({ params }: { params: Promise<{ id: s
                       </p>
                     </div>
                     <p className="text-[11px] text-indigo-600/70 mt-3 font-medium leading-relaxed">
-                      Please complete the transfer of <span className="font-bold text-indigo-900">{order.totalPrice.toFixed(2)} {t("common.currency")}</span> to the details above, then upload your transaction screenshot below.
+                      Please complete the transfer of <span className="font-bold text-indigo-900">{order.totalPrice} {t("common.currency")}</span> to the details above, then upload your transaction screenshot below.
                     </p>
                 </div>
             )}
@@ -223,11 +223,11 @@ export default function CustomCheckoutPage({ params }: { params: Promise<{ id: s
                 <div className="border-t pt-6 mb-6">
                    <div className="flex justify-between items-center text-lg font-bold text-neutral-500 mb-2">
                      <span>Design Price</span>
-                     <span>{order.totalPrice.toFixed(2)} {t("common.currency")}</span>
+                     <span>{order.totalPrice} {t("common.currency")}</span>
                    </div>
                    <div className="flex justify-between items-center text-2xl font-black mt-4">
                      <span>Total</span>
-                     <span>{order.totalPrice.toFixed(2)} {t("common.currency")}</span>
+                     <span>{order.totalPrice} {t("common.currency")}</span>
                    </div>
                 </div>
 

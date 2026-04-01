@@ -155,7 +155,7 @@ export default function ProductDetailsPage() {
           </div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-4">{product.name}</h1>
           <p className="text-2xl font-bold text-neutral-800 mb-8 decoration-indigo-500/30 underline underline-offset-8">
-            {product.price?.toFixed(2)} {t("common.currency")}
+            {product.price} {t("common.currency")}
           </p>
 
           <p className="text-neutral-600 mb-10 leading-relaxed font-medium">

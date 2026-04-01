@@ -12,40 +12,39 @@ export async function GET() {
   try {
     const db = adminDb();
 
-    // Get all users with role "user"
-    const usersSnapshot = await db.collection("users").where("role", "==", "user").get();
+    // Get all users (except admins)
+    const usersSnapshot = await db.collection("users").get();
+    
+    // Filter users to only include those who are not admins
+    const docs = usersSnapshot.docs.filter(doc => doc.data().role !== "admin");
 
-    const enrichedUsers = await Promise.all(usersSnapshot.docs.map(async userDoc => {
-      const u = { _id: userDoc.id, ...userDoc.data() };
+    const enrichedUsers = await Promise.all(docs.map(async userDoc => {
+      const userData = userDoc.data();
+      const u = { _id: userDoc.id, ...userData };
       
       // Get last message for this user
       const lastMsgSnap = await db.collection("chatMessages")
         .where("conversationId", "==", userDoc.id)
-        .orderBy("createdAt", "desc")
-        .limit(1)
         .get();
+      
+      const allMessages = lastMsgSnap.docs.map(d => ({ _id: d.id, ...d.data() as any }));
+      // Sort manually to find the last message
+      allMessages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const lastMessage = allMessages.length > 0 ? allMessages[0] : null;
 
-      const unreadSnap = await db.collection("chatMessages")
-        .where("conversationId", "==", userDoc.id)
-        .where("role", "==", "user")
-        .get();
-
-      const lastMessage = lastMsgSnap.empty ? null : {
-        _id: lastMsgSnap.docs[0].id,
-        ...lastMsgSnap.docs[0].data()
-      };
+      const unreadCount = allMessages.filter(m => m.role === "user").length;
 
       return {
         ...u,
         lastMessage,
-        unreadCount: unreadSnap.size
+        unreadCount
       };
     }));
 
     // Sort by last message date
     enrichedUsers.sort((a, b) => {
-      const dateA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt as string).getTime() : 0;
-      const dateB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt as string).getTime() : 0;
+      const dateA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt as any).getTime() : 0;
+      const dateB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt as any).getTime() : 0;
       return dateB - dateA;
     });
 

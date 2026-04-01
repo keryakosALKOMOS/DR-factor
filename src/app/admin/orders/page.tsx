@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CreditCard, Package, Loader2 } from "lucide-react";
+import { CreditCard, Package, Loader2, ImageIcon } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface Order {
@@ -10,6 +10,9 @@ interface Order {
   totalPrice: number;
   paymentMethod: string;
   status: string;
+  paymentProof?: string;
+  itemsPrice: number;
+  shippingPrice: number;
   user?: { name: string; email: string };
 }
 
@@ -68,6 +71,25 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handleShippingUpdate = async (orderId: string, newShipping: string) => {
+    setUpdatingId(orderId);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shippingPrice: Number(newShipping) || 0 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(prev => prev.map(o => o._id === orderId ? { ...o, ...data.order } : o));
+      }
+    } catch (e) {
+      console.error("Failed to update shipping", e);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const filteredOrders = activeTab === "All" ? orders : orders.filter(o => o.status === activeTab);
 
   return (
@@ -102,6 +124,7 @@ export default function AdminOrdersPage() {
                 <th className="p-4 font-medium">{t("admin.orderId")}</th>
                 <th className="p-4 font-medium">{t("admin.date")}</th>
                 <th className="p-4 font-medium">{t("admin.customer")}</th>
+                <th className="p-4 font-medium">{t("admin.shippingFee") || "Shipping"}</th>
                 <th className="p-4 font-medium">{t("admin.total")}</th>
                 <th className="p-4 font-medium">{t("admin.payment")}</th>
                 <th className="p-4 font-medium">{t("admin.status")}</th>
@@ -117,9 +140,39 @@ export default function AdminOrdersPage() {
                     <p className="font-medium text-neutral-900">{order.user?.name || t("admin.unknown")}</p>
                     <p className="text-xs text-neutral-500">{order.user?.email || ""}</p>
                   </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                       <input 
+                         type="number"
+                         min="0"
+                         defaultValue={order.shippingPrice || 0}
+                         onBlur={(e) => {
+                           if (Number(e.target.value) !== (order.shippingPrice || 0)) {
+                             handleShippingUpdate(order._id, e.target.value);
+                           }
+                         }}
+                         className="w-16 border rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-black"
+                       />
+                       <span className="text-xs text-neutral-500">{t("common.currency")}</span>
+                    </div>
+                  </td>
                   <td className="p-4 font-medium">{order.totalPrice.toFixed(2)} {t("common.currency")}</td>
                   <td className="p-4">
-                     <span className="flex items-center gap-1"><CreditCard className="w-3 h-3"/> {order.paymentMethod}</span>
+                     <div className="flex flex-col gap-1">
+                        <span className="flex items-center gap-1 font-medium"><CreditCard className="w-3 h-3 text-neutral-400"/> {order.paymentMethod}</span>
+                        {order.paymentProof ? (
+                          <a 
+                            href={order.paymentProof} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-100 hover:bg-green-100 transition-colors w-fit font-bold flex items-center gap-1"
+                          >
+                            <ImageIcon className="w-2 h-2" /> {t("admin.viewProof") || "View Proof"}
+                          </a>
+                        ) : order.paymentMethod !== "Credit/Debit Card" && (
+                          <span className="text-[10px] text-neutral-400 italic">No proof uploaded</span>
+                        )}
+                     </div>
                   </td>
                   <td className="p-4">
                      {updatingId === order._id ? (

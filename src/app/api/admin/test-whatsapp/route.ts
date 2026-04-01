@@ -18,7 +18,8 @@ export async function POST(request: Request) {
     if (result.success) {
       return NextResponse.json({ success: true, message: "Test message sent!" });
     } else {
-      return NextResponse.json({ success: false, message: "Failed to send message: " + (result.error as any).message }, { status: 500 });
+      const errMsg = result.error instanceof Error ? result.error.message : String(result.error);
+      return NextResponse.json({ success: false, message: "Failed to send message: " + errMsg }, { status: 500 });
     }
   } catch (error) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });

@@ -93,9 +93,17 @@ export default function ProfilePage() {
                       <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider mb-1">Order ID: {order._id.slice(-8).toUpperCase()}</p>
                       <p className="text-sm font-medium">{new Date(order.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-lg font-black">{order.totalPrice?.toFixed(2)} {t("common.currency")}</span>
-                      <span className="bg-neutral-100 px-3 py-1 rounded-full text-xs font-bold font-mono text-neutral-700">{order.status}</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="text-xs text-neutral-500 font-mono">
+                        {t("checkout.items") || "Items"}: {order.itemsPrice ? order.itemsPrice : order.totalPrice} {t("common.currency")}
+                      </div>
+                      <div className="text-xs text-neutral-500 font-mono">
+                        {t("checkout.shippingFee") || "Shipping"}: {order.shippingPrice > 0 ? `${order.shippingPrice} ${t("common.currency")}` : t("checkout.shippingTBD") || "TBD"}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="font-mono text-lg font-black">{order.totalPrice} {t("common.currency")}</span>
+                        <span className="bg-neutral-100 px-3 py-1 rounded-full text-xs font-bold font-mono text-neutral-700">{order.status}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-4">
@@ -143,7 +151,7 @@ export default function ProfilePage() {
                       
                       <div className="flex items-center gap-4 text-xs font-bold text-neutral-500">
                         <span>{new Date(order.createdAt).toLocaleDateString()}</span>
-                        {order.totalPrice > 0 && <span className="text-black bg-neutral-100 px-2 py-1 rounded">Price set: {order.totalPrice.toFixed(2)} {t("common.currency")}</span>}
+                        {order.totalPrice > 0 && <span className="text-black bg-neutral-100 px-2 py-1 rounded">Price set: {order.totalPrice} {t("common.currency")}</span>}
                       </div>
                     </div>
 
@@ -160,7 +168,7 @@ export default function ProfilePage() {
                           </Link>
                         </div>
                       ) : (
-                        <span className="text-xl font-black">{order.totalPrice > 0 ? `${order.totalPrice.toFixed(2)} ${t("common.currency")}` : "TBD"}</span>
+                        <span className="text-xl font-black">{order.totalPrice > 0 ? `${order.totalPrice} ${t("common.currency")}` : "TBD"}</span>
                       )}
 
                     </div>

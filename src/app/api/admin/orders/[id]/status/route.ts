@@ -13,12 +13,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   try {
     const { id } = await params;
-    const { status } = await request.json();
-
-    const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-    }
+    const { status, shippingPrice } = await request.json();
 
     const db = adminDb();
     const docRef = db.collection("orders").doc(id);
@@ -28,16 +23,31 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    if (status === "Cancelled") {
-      await docRef.delete();
-      return NextResponse.json({ success: true, deleted: true });
+    const updateData: any = { updatedAt: new Date().toISOString() };
+
+    if (status) {
+      const validStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      }
+      if (status === "Cancelled") {
+        await docRef.delete();
+        return NextResponse.json({ success: true, deleted: true });
+      }
+      updateData.status = status;
     }
 
-    await docRef.update({ status, updatedAt: new Date().toISOString() });
-    const updatedOrder = { _id: id, ...docSnap.data(), status };
+    if (shippingPrice !== undefined) {
+      const itemsPrice = docSnap.data()?.itemsPrice || docSnap.data()?.totalPrice || 0;
+      updateData.shippingPrice = Number(shippingPrice);
+      updateData.totalPrice = itemsPrice + Number(shippingPrice);
+    }
+
+    await docRef.update(updateData);
+    const updatedOrder = { _id: id, ...docSnap.data(), ...updateData };
 
     const userId = docSnap.data()?.user;
-    if (userId) {
+    if (userId && status) {
       sendNotificationToUser(userId, {
         title: "Order Status Updated",
         body: `Your order status is now: ${status}`,

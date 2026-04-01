@@ -152,7 +152,7 @@ export default function Home() {
                 </div>
                 <div className="flex-1 flex flex-col">
                   <h3 className="text-sm font-bold text-neutral-900 line-clamp-1 mb-1">{product.name}</h3>
-                  <p className="text-sm text-neutral-500 font-medium mt-auto decoration-indigo-500/30 group-hover:underline underline-offset-4">{product.price.toFixed(2)} {t("common.currency")}</p>
+                  <p className="text-sm text-neutral-500 font-medium mt-auto decoration-indigo-500/30 group-hover:underline underline-offset-4">{product.price} {t("common.currency")}</p>
                 </div>
               </Link>
             ))}

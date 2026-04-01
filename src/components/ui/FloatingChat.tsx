@@ -45,12 +45,14 @@ export default function FloatingChat() {
   // If not logged in, don't show anything
   if (!session) return null;
 
-  // Only hide if absolutely no messages and it's a regular user
-  // (Admins might want to see it always, but this is a user-facing tool)
-  if (loading && !isOpen) return null;
+  // Show the bubble for all logged in users, even if no messages yet
+  // If loading and not open, we can wait a bit, but for UX it's better to just show it once session is confirmed.
+  if (loading && !isOpen) {
+     // Still show the button but with a loading state if we want, 
+     // or just wait for session. For now, we have session, so show it.
+  }
   
-  // Show if: open OR hasMessages OR user clicked explicitly (handled by state)
-  if (!hasMessages && !isOpen) return null;
+  // No longer hide if !hasMessages. Users need the button to START a message.
 
   return (
     <div className={`fixed bottom-6 ${isRTL ? "left-6" : "right-6"} z-[60] flex flex-col items-end`}>

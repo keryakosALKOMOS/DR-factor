@@ -80,9 +80,9 @@ export async function GET(request: Request) {
     let snapshot;
     
     if (isAdmin) {
-      snapshot = await db.collection("customOrders").orderBy("createdAt", "desc").get();
+      snapshot = await db.collection("customOrders").get();
     } else {
-      snapshot = await db.collection("customOrders").where("user", "==", userId).orderBy("createdAt", "desc").get();
+      snapshot = await db.collection("customOrders").where("user", "==", userId).get();
     }
 
     const orders = await Promise.all(snapshot.docs.map(async doc => {
@@ -99,6 +99,9 @@ export async function GET(request: Request) {
 
       return { _id: doc.id, ...data, user: { _id: data.user, ...userInfo } };
     }));
+
+    // Sort in memory to avoid missing index errors
+    orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return NextResponse.json({ orders });
   } catch (error) {

@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { orderItems, shippingAddress, paymentMethod, totalPrice, notes } = body;
+    const { orderItems, shippingAddress, paymentMethod, totalPrice, notes, paymentProof, itemsPrice, shippingPrice } = body;
 
     if (!orderItems || orderItems.length === 0) {
       return NextResponse.json({ message: "No order items" }, { status: 400 });
@@ -26,8 +26,11 @@ export async function POST(req: Request) {
       orderItems,
       shippingAddress,
       paymentMethod,
-      totalPrice,
+      itemsPrice: itemsPrice || totalPrice,
+      shippingPrice: shippingPrice || 0,
+      totalPrice: totalPrice,
       notes: notes || "",
+      paymentProof: paymentProof || "",
       isPaid: false,
       isDelivered: false,
       status: "Pending",
@@ -77,9 +80,12 @@ export async function GET(req: Request) {
 
     const db = adminDb();
     const userId = (session.user as any).id;
-    const snapshot = await db.collection("orders").where("user", "==", userId).orderBy("createdAt", "desc").get();
+    const snapshot = await db.collection("orders").where("user", "==", userId).get();
 
     const orders = snapshot.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
+    // Sort in memory to avoid missing index errors
+    orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
     return NextResponse.json(orders);
   } catch (error: any) {
     return NextResponse.json({ message: "Failed to fetch orders" }, { status: 500 });
