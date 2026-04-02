@@ -112,6 +112,7 @@ export async function sendWhatsAppMessage(to: string, message: string) {
         to: to,
         body: message,
       }),
+      signal: AbortSignal.timeout(5000),
     });
 
     const data = await response.json();

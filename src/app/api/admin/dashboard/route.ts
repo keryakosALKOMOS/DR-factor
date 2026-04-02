@@ -28,12 +28,19 @@ export async function GET() {
     let standardRevenue = 0;
     ordersSnap.docs.forEach(doc => {
       const data = doc.data();
-      if (data.isPaid) standardRevenue += data.totalPrice || 0;
+      // Count revenue for standard orders that are not cancelled
+      if (data.status !== "Cancelled") {
+        standardRevenue += Number(data.totalPrice) || 0;
+      }
     });
 
     let customRevenue = 0;
     customOrdersSnap.docs.forEach(doc => {
-      customRevenue += doc.data().totalPrice || 0;
+      const data = doc.data();
+      // Count revenue for custom orders that are not rejected/cancelled
+      if (data.status !== "Rejected" && data.status !== "Cancelled") {
+        customRevenue += Number(data.totalPrice) || 0;
+      }
     });
 
     const totalRevenue = standardRevenue + customRevenue;

@@ -14,7 +14,6 @@ export async function GET() {
     const db = adminDb();
     const snapshot = await db.collection("chatMessages")
       .where("conversationId", "==", userId)
-      .orderBy("createdAt", "asc")
       .get();
 
     const messages = snapshot.docs.map(doc => {
@@ -24,7 +23,7 @@ export async function GET() {
         ...data,
         sender: { _id: data.sender, name: data.senderName || "User" },
       };
-    });
+    }).sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     return NextResponse.json({ messages });
   } catch (error) {
